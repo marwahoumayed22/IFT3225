@@ -1,0 +1,20 @@
+{
+  "name": "ambiance-api",
+  "version": "1.0.0",
+  "description": "Infrastructure de collecte et de consultation de l'ambiance d'un lieu — IFT3225 Phase 1",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "seed": "node seed/seed.js",
+    "bridge": "node bridge/phyphox-bridge.js",
+    "observe": "node scripts/manual-observation.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
