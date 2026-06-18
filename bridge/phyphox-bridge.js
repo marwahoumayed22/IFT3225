@@ -18,7 +18,7 @@ async function pollAndForward() {
 
     // Le nom du canal ("amplitude" ici) dépend de la configuration de l'expérience
     // Phyphox utilisée (à activer dans "Allow remote access" > export du buffer).
-    const buffer = data.buffer.amplitude.buffer;
+    const buffer = data.buffer.dB.buffer;
     if (!buffer || buffer.length === 0) return;
 
     const latestValue = buffer[buffer.length - 1];

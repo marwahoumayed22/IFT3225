@@ -1,9 +1,8 @@
-// Seuils de classification du niveau sonore.
-// Ces valeurs sont des points de départ — à recalibrer une fois les vraies
-// données de la Tâche 6 collectées (l'amplitude Phyphox dépend du modèle de
-// téléphone et de l'expérience choisie). Voir section "Agrégation" du rapport.
-const QUIET_THRESHOLD = 0.1;
-const LOUD_THRESHOLD = 0.4;
+// Seuils de classification du niveau sonore, en dB (échelle Phyphox).
+// Valeurs de départ — à recalibrer avec les vraies données de la Tâche 6
+// une fois que tu auras collecté au café (voir section "Agrégation" du rapport).
+const QUIET_THRESHOLD = -50;
+const LOUD_THRESHOLD = -35;
 
 function classifyAudioLevel(average) {
   if (average === null || average === undefined) return 'inconnu';
