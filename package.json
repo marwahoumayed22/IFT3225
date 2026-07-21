@@ -2,13 +2,16 @@
   "name": "ambiance-api",
   "version": "1.0.0",
   "description": "Infrastructure de collecte et de consultation de l'ambiance d'un lieu — IFT3225 Phase 1",
-  "main": "src/server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "seed": "node seed/seed.js",
-    "seed:phase2": "node seed/seed-phase2.js",
+    "seed:phase2": "npm run build && node seed/seed-phase2.js",
     "bridge": "node bridge/phyphox-bridge.js",
-    "observe": "node scripts/manual-observation.js"
+    "observe": "node scripts/manual-observation.js",
+    "measure": "node scripts/manual-measurement.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -20,5 +23,14 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.1.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.6.3"
   }
 }

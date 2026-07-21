@@ -14,7 +14,14 @@ Infrastructure qui capte l'ambiance d'un café en quasi temps réel (niveau sono
 npm install
 cp .env.example .env
 # remplir MONGODB_URI dans .env (et les autres variables selon les scripts utilisés)
-npm start
+npm run dev
+```
+
+`npm run dev` lance le serveur directement depuis les sources TypeScript (`src/`), avec rechargement automatique. Pour une exécution en production (compilée) :
+
+```bash
+npm run build   # compile src/*.ts vers dist/*.js
+npm start        # lance dist/server.js
 ```
 
 Le serveur démarre sur `http://localhost:3000` (port configurable via `PORT`).
@@ -108,3 +115,20 @@ npm run seed:phase2
 ```
 
 Insère (ou met à jour) les 3 lieux avec coordonnées et génère 15 mesures par lieu (45 au total, ≥ 12 requis) sans effacer les données existantes.
+
+---
+
+## Bonus réalisés
+
+### Backend en TypeScript
+
+Tout le serveur (`src/`) a été porté en TypeScript : modèles Mongoose typés (interfaces `Document`), middlewares et routes typés via `express.Router`, requête/réponse typées. Le contrat entre le modèle de données, les routes et les réponses HTTP est vérifié à la compilation (`npm run build` ou `npx tsc --noEmit`).
+
+- `npm run dev` : exécution directe des sources `.ts` avec rechargement automatique (`ts-node-dev`).
+- `npm run build` puis `npm start` : compilation vers `dist/` puis exécution du JavaScript compilé (mode "production").
+- Les scripts indépendants du serveur (`seed/`, `bridge/`, `scripts/`) restent en JavaScript simple ; `seed/seed-phase2.js` consomme les modèles compilés dans `dist/` (d'où l'exécution automatique de `npm run build` avant le seed, voir le script `seed:phase2`).
+
+### Temps réel (Server-Sent Events)
+
+`GET /locations/stream` ouvre un flux SSE : dès qu'une mesure (`POST /measurements`) ou une observation (`POST /observations`) est reçue pour un lieu, sa classification mise à jour est poussée immédiatement à tous les clients connectés à ce flux, sans qu'ils aient à re-interroger l'API par sondage périodique. Le client React s'y abonne dès le chargement de la carte (`src/api/locations.js` → `subscribeToLocationUpdates`) et met à jour l'affichage en direct.
+

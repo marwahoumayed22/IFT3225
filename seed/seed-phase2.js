@@ -6,10 +6,13 @@
 // Usage : npm run seed:phase2
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Device = require('../src/models/Device');
-const Measurement = require('../src/models/Measurement');
-const Location = require('../src/models/Location');
-const { generateApiKey } = require('../src/utils/apiKey');
+// Le backend est maintenant en TypeScript (voir tsconfig.json) : ce script,
+// lui, reste en JS simple et consomme donc la version compilée (dist/),
+// d'où la nécessité de lancer `npm run build` avant `npm run seed:phase2`.
+const Device = require('../dist/models/Device').default;
+const Measurement = require('../dist/models/Measurement').default;
+const Location = require('../dist/models/Location').default;
+const { generateApiKey } = require('../dist/utils/apiKey');
 
 const LOCATIONS = [
   { slug: 'second-cup-cote-des-neiges', name: 'Second Cup Côte-des-Neiges', lat: 45.4976, lng: -73.6217, profile: 'moyen' },

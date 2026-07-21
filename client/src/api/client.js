@@ -4,6 +4,10 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+export function getApiBaseUrl() {
+  return BASE_URL;
+}
+
 let authToken = null;
 
 export function setAuthToken(token) {

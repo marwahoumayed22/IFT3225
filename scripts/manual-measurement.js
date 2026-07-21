@@ -1,3 +1,6 @@
+// Alternative au bridge Phyphox quand le téléphone et l'ordinateur ne peuvent
+// pas se joindre en réseau (ex: Wi-Fi public avec isolation client, comme dans
+// un café). Tu lis la valeur affichée sur l'écran Phyphox et tu la tapes ici.
 require('dotenv').config();
 const readline = require('readline');
 
