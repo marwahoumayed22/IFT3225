@@ -1,7 +1,7 @@
 const express = require('express');
 const Measurement = require('../models/Measurement');
-const Observation = require('../models/Observation');
 const { classifyAudioLevel, average } = require('../utils/aggregation');
+const { computePortrait } = require('../utils/portrait');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
@@ -19,32 +19,13 @@ function parseDuration(str, fallbackMinutes) {
 router.get('/:location', async (req, res, next) => {
   try {
     const { location } = req.params;
-    const windowMinutes = 15;
-    const since = new Date(Date.now() - windowMinutes * 60 * 1000);
+    const portrait = await computePortrait(location);
 
-    const measurements = await Measurement.find({ location, timestamp: { $gte: since } });
-    const lastObservation = await Observation.findOne({ location }).sort({ timestamp: -1 });
-
-    if (measurements.length === 0 && !lastObservation) {
+    if (!portrait.hasData) {
       return sendError(res, 404, 'NO_DATA', `Aucune donnée disponible pour le lieu "${location}".`);
     }
 
-    const avg = average(measurements.map((m) => m.value));
-
-    return sendSuccess(res, 200, {
-      location,
-      windowMinutes,
-      sampleCount: measurements.length,
-      audio: { average: avg, classification: classifyAudioLevel(avg) },
-      lastObservation: lastObservation
-        ? {
-            proximity: lastObservation.proximity,
-            vibe: lastObservation.vibe,
-            timestamp: lastObservation.timestamp,
-          }
-        : null,
-      generatedAt: new Date(),
-    });
+    return sendSuccess(res, 200, portrait);
   } catch (err) {
     next(err);
   }

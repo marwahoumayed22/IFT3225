@@ -9,6 +9,9 @@ const observationSchema = new mongoose.Schema({
   timestamp: { type: Date, required: true },
   receivedAt: { type: Date, default: Date.now },
   deviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Device' },
+  // Phase 2 : usager qui a soumis l'observation via l'app cliente.
+  // Optionnel pour ne pas casser les observations existantes / la collecte Phase 1.
+  authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 });
 
 observationSchema.index({ location: 1, timestamp: -1 });

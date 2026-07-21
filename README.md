@@ -64,3 +64,47 @@ Toutes les réponses suivent l'enveloppe `{ "data": ... }` en cas de succès, `{
 ## Fichier `.env.example`
 
 Voir `.env.example` à la racine pour la liste complète des variables d'environnement attendues par chaque script (`server.js`, `seed.js`, `bridge`, `manual-observation.js`).
+
+---
+
+## Phase 2 — mise à jour de l'infrastructure
+
+La Phase 2 ajoute une app cliente React (dossier [`client/`](./client)) qui consomme cette API. Trois changements ont été apportés au modèle et aux endpoints, **sans casser** la collecte ni les lectures de la Phase 1 :
+
+1. **Coordonnées des lieux** — nouveau modèle `Location` (`slug`, `name`, `lat`, `lng`). Le `slug` réutilise exactement la même chaîne que le champ `location` déjà présent sur `Device` / `Measurement` / `Observation` : aucune donnée existante n'a été renommée.
+2. **Auteur des observations** — `Observation` porte maintenant un `authorId` (référence `User`), **optionnel** par défaut pour ne pas invalider les observations déjà en base.
+3. **Classification exposée** — le portrait d'ambiance (`GET /ambiance/:location`) et la liste des lieux (`GET /locations`) renvoient directement `classification` (`calme` / `modere` / `anime`) et l'échelle utilisée, pour que le client n'ait rien à recalculer.
+
+### Nouveaux endpoints
+
+| Méthode | Endpoint | Auth | Corps | Réponse |
+|---|---|---|---|---|
+| POST | `/auth/register` | non | `{ email, password, name }` | `201` + `{ token, user }` |
+| POST | `/auth/login` | non | `{ email, password }` | `200` + `{ token, user }` |
+| GET | `/locations` | non | — | lieux avec coordonnées + classification courante |
+| GET | `/locations/:slug` | non | — | détail d'un lieu |
+| POST | `/locations` | JWT | `{ slug, name, lat, lng }` | `201` + lieu créé |
+| GET | `/users/me` | JWT | — | profil de l'usager connecté |
+| GET | `/users/me/observations` | JWT | — | récapitulatif des contributions |
+| GET | `/users/me/locations` | JWT | — | lieux où l'usager a soumis des observations |
+| POST | `/users/me/favorites/:slug` | JWT | — | ajoute un favori |
+| DELETE | `/users/me/favorites/:slug` | JWT | — | retire un favori |
+
+### Endpoint modifié
+
+- `POST /observations` — protégé par **JWT** (usager de l'app) au lieu de `x-api-key` (device). C'est un changement de comportement assumé : en Phase 1, une observation venait d'un device de collecte ; en Phase 2, elle vient d'un usager identifié qui doit être crédité de sa contribution. `GET /observations` reste public et inchangé.
+
+### Variables d'environnement ajoutées
+
+```
+JWT_SECRET=...
+JWT_EXPIRES_IN=7d
+```
+
+### Peupler les lieux et les mesures de la Phase 2
+
+```bash
+npm run seed:phase2
+```
+
+Insère (ou met à jour) les 3 lieux avec coordonnées et génère 15 mesures par lieu (45 au total, ≥ 12 requis) sans effacer les données existantes.

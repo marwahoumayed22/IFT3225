@@ -8,7 +8,7 @@ function classifyAudioLevel(average) {
   if (average === null || average === undefined) return 'inconnu';
   if (average < QUIET_THRESHOLD) return 'calme';
   if (average < LOUD_THRESHOLD) return 'modere';
-  return 'bruyant';
+  return 'anime';
 }
 
 function average(values) {

@@ -1,12 +1,14 @@
 const express = require('express');
 const Observation = require('../models/Observation');
-const requireApiKey = require('../middlewares/auth');
+const requireAuth = require('../middlewares/jwtAuth');
 const { sendSuccess, sendError } = require('../utils/response');
 
 const router = express.Router();
 
-// POST /observations — protégé par x-api-key
-router.post('/', requireApiKey, async (req, res, next) => {
+// POST /observations — Phase 2 : protégé par JWT (usager de l'app cliente),
+// remplace la protection x-api-key de la Phase 1 (qui restait pensée pour un device).
+// L'observation est liée à son auteur pour le récapitulatif des contributions.
+router.post('/', requireAuth, async (req, res, next) => {
   try {
     const { location, proximity, vibe, notes, timestamp } = req.body;
 
@@ -25,7 +27,7 @@ router.post('/', requireApiKey, async (req, res, next) => {
       vibe,
       notes,
       timestamp: new Date(timestamp),
-      deviceId: req.device._id,
+      authorId: req.user._id,
     });
 
     return sendSuccess(res, 201, observation);
