@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { computeHourlyStats, findQuietHours } from './quietHours.service';
 
+// Heure LOCALE volontairement (pas Date.UTC) : computeHourlyStats lit .getHours(),
+// qui renvoie l'heure locale de la machine. Construire les fixtures en UTC ferait
+// dépendre le résultat du fuseau horaire de la machine qui exécute les tests.
 function atHour(hour: number): Date {
-  return new Date(Date.UTC(2026, 0, 1, hour, 0, 0));
+  return new Date(2026, 0, 1, hour, 0, 0);
 }
 
 describe('computeHourlyStats', () => {
