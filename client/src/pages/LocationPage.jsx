@@ -1,11 +1,12 @@
 import { useParams, Link } from 'react-router-dom';
 import { useAsync } from '../hooks/useAsync';
 import { getLocation } from '../api/locations';
-import { getPortrait, getHistory, getQuietHours } from '../api/ambiance';
+import { getPortrait, getHistory, getQuietHours, getBestStudyTime } from '../api/ambiance';
 import { useAuth } from '../auth/AuthContext';
 import AmbianceBadge from '../components/lieu/AmbianceBadge';
 import HistoryChart from '../components/lieu/HistoryChart';
 import QuietHours from '../components/lieu/QuietHours';
+import StudyTimeSuggestion from '../components/lieu/StudyTimeSuggestion';
 import ObservationForm from '../components/observations/ObservationForm';
 import LoadingState from '../components/common/LoadingState';
 import ErrorState from '../components/common/ErrorState';
@@ -19,6 +20,7 @@ export default function LocationPage() {
   const portrait = useAsync(() => getPortrait(slug), [slug], { isEmpty: () => false });
   const history = useAsync(() => getHistory(slug, '3h'), [slug], { isEmpty: (d) => d.length === 0 });
   const quietHours = useAsync(() => getQuietHours(slug), [slug], { isEmpty: () => false });
+  const studyTime = useAsync(() => getBestStudyTime(slug), [slug], { isEmpty: () => false });
 
   if (locationInfo.status === 'loading') return <LoadingState label="Chargement du lieu…" />;
   if (locationInfo.status === 'error') {
@@ -79,6 +81,18 @@ export default function LocationPage() {
         {quietHours.status === 'success' && (
           <QuietHours quietHours={quietHours.data.quietHours} hourly={quietHours.data.hourly} />
         )}
+      </div>
+
+      <div className="panel">
+        <h2>Meilleur moment pour étudier</h2>
+        {studyTime.status === 'loading' && <LoadingState label="Recherche du prochain créneau calme…" />}
+        {studyTime.status === 'error' && studyTime.error?.code !== 'NO_DATA' && (
+          <ErrorState error={studyTime.error} onRetry={studyTime.reload} />
+        )}
+        {studyTime.status === 'error' && studyTime.error?.code === 'NO_DATA' && (
+          <EmptyState title="Pas assez de mesures pour ce lieu" detail="Reviens plus tard, une fois que des données auront été collectées." />
+        )}
+        {studyTime.status === 'success' && <StudyTimeSuggestion suggestion={studyTime.data} />}
       </div>
 
       <div className="panel">
