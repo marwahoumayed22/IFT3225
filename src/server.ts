@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import connectDB from './config/db';
+import './utils/cacheInvalidation';
 
 import devicesRoutes from './routes/devices.routes';
 import measurementsRoutes from './routes/measurements.routes';
@@ -15,7 +16,17 @@ import errorHandler from './middlewares/errorHandler';
 import notFound from './middlewares/notFound';
 
 const app = express();
-app.use(cors());
+
+// CORS_ORIGIN : liste d'origines autorisées séparées par des virgules
+// (ex: "https://ambiance-client.onrender.com"). En développement, la variable
+// est absente et on autorise toute origine pour ne pas gêner localhost:5173.
+// En production (Render), CORS_ORIGIN doit être défini avec l'URL exacte du
+// frontend déployé — voir render.yaml et le README, section Déploiement.
+const corsOrigin = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+  : true;
+
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
 app.get('/', (req, res) => res.json({ name: 'Ambiance API', status: 'ok' }));

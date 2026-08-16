@@ -27,7 +27,46 @@ class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body, auth = false } = {}) {
+// Cache TTL en mémoire, côté client — même principe que le cache backend
+// (utils/cache.ts) : une Map avec expiration, invalidable par préfixe. Vidé
+// automatiquement au rechargement de la page (mémoire du process JS), ce qui est
+// voulu : pas besoin de persister ce cache, il ne fait qu'éviter des requêtes
+// redondantes pendant une session de navigation.
+const responseCache = new Map();
+
+function getCached(path) {
+  const entry = responseCache.get(path);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(path);
+    return undefined;
+  }
+  return entry.value;
+}
+
+function setCached(path, value, ttlMs) {
+  responseCache.set(path, { value, expiresAt: Date.now() + ttlMs });
+}
+
+// Invalide toutes les entrées dont la clé (le path) commence par `prefix`.
+// Appelé après une écriture (ex: soumission d'une observation) pour que la donnée
+// affichée reflète immédiatement le changement plutôt que d'attendre l'expiration du TTL.
+function invalidateCache(prefix) {
+  for (const key of responseCache.keys()) {
+    if (key.startsWith(prefix)) responseCache.delete(key);
+  }
+}
+
+async function request(path, { method = 'GET', body, auth = false, ttlMs } = {}) {
+  // Seules les requêtes GET explicitement marquées d'un ttlMs passent par le cache.
+  // Par défaut (ttlMs absent), rien n'est mis en cache — c'est le cas de toutes les
+  // routes /users/me* (données propres à l'usager) et /auth/* (sensibles), pour
+  // lesquelles on veut toujours la donnée la plus fraîche.
+  if (method === 'GET' && ttlMs) {
+    const cached = getCached(path);
+    if (cached !== undefined) return cached;
+  }
+
   const headers = { 'Content-Type': 'application/json' };
   if (auth && authToken) {
     headers.Authorization = `Bearer ${authToken}`;
@@ -57,6 +96,11 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
     throw new ApiError(res.status, err?.code || 'UNKNOWN_ERROR', err?.message || `Erreur ${res.status}`, err?.details);
   }
 
+  // On ne cache jamais une erreur : seule une réponse 2xx est mémorisée.
+  if (method === 'GET' && ttlMs) {
+    setCached(path, payload, ttlMs);
+  }
+
   return payload;
 }
 
@@ -64,6 +108,7 @@ export const apiClient = {
   get: (path, opts) => request(path, { method: 'GET', ...opts }),
   post: (path, body, opts) => request(path, { method: 'POST', body, ...opts }),
   delete: (path, opts) => request(path, { method: 'DELETE', ...opts }),
+  invalidate: (prefix) => invalidateCache(prefix),
 };
 
 export { ApiError };

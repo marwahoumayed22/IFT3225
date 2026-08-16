@@ -3,6 +3,7 @@ import Location, { LocationDocument } from '../models/Location';
 import requireAuth from '../middlewares/jwtAuth';
 import ambianceEvents, { AmbianceUpdateEvent } from '../utils/events';
 import { computePortrait } from '../utils/portrait';
+import { cacheResponse } from '../middlewares/cache';
 import { sendSuccess, sendError } from '../utils/response';
 
 const router: Router = express.Router();
@@ -21,6 +22,9 @@ async function toMapEntry(location: LocationDocument) {
 }
 
 // GET /locations/stream — Bonus temps réel (Server-Sent Events).
+// NE DOIT JAMAIS ÊTRE MIS EN CACHE : c'est une connexion persistante, pas une réponse
+// ponctuelle (d'où le header Cache-Control: no-cache déjà explicite ci-dessous), et le
+// middleware cacheResponse ne s'applique de toute façon qu'aux réponses JSON classiques.
 // Pousse vers le client une mise à jour du lieu concerné dès qu'une nouvelle
 // mesure ou observation est reçue (voir utils/events.ts), plutôt que d'obliger
 // le client à re-interroger l'API par sondage périodique.
@@ -60,17 +64,27 @@ router.get('/stream', (req, res) => {
 // Renvoie chaque lieu avec ses coordonnées ET sa classification courante,
 // pour que le client affiche directement les marqueurs colorés sur la carte
 // sans avoir à interroger /ambiance/:location une par une.
-router.get('/', async (req, res, next) => {
-  try {
-    const locations = await Location.find().sort({ name: 1 });
-    const withPortrait = await Promise.all(locations.map(toMapEntry));
-    return sendSuccess(res, 200, withPortrait, { count: withPortrait.length });
-  } catch (err) {
-    next(err);
+// C'est la route la plus coûteuse à calculer (un computePortrait par lieu), donc
+// la plus rentable à mettre en cache — clé fixe, TTL court car appelée en boucle
+// par la carte et invalidée dès qu'une mesure/observation arrive (voir cacheInvalidation.ts).
+router.get(
+  '/',
+  cacheResponse(() => 'locations:list', 20_000),
+  async (req, res, next) => {
+    try {
+      const locations = await Location.find().sort({ name: 1 });
+      const withPortrait = await Promise.all(locations.map(toMapEntry));
+      return sendSuccess(res, 200, withPortrait, { count: withPortrait.length });
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 // GET /locations/:slug — détail d'un lieu (sans le portrait complet, voir /ambiance/:location pour ça)
+// Volontairement NON mis en cache : c'est un point-lookup Mongoose déjà bon marché
+// (index unique sur `slug`), sans agrégation — la charge additionnelle du cache
+// (gestion des clés, invalidation) n'apporterait rien ici.
 router.get('/:slug', async (req, res, next) => {
   try {
     const location = await Location.findOne({ slug: req.params.slug });

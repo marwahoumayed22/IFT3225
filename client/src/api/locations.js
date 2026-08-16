@@ -1,9 +1,11 @@
 import { apiClient, getApiBaseUrl } from './client';
 
 export function getLocations() {
-  return apiClient.get('/locations');
+  return apiClient.get('/locations', { ttlMs: 20_000 });
 }
 
+// Volontairement non caché : voir la même décision côté backend (routes/locations.routes.ts) —
+// point-lookup déjà bon marché, la donnée est statique (nom/coordonnées).
 export function getLocation(slug) {
   return apiClient.get(`/locations/${slug}`);
 }
