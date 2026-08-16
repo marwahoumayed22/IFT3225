@@ -57,6 +57,7 @@ npm run observe
 | GET | `/ambiance/:location` | non | — | portrait actuel (fenêtre 15 min) |
 | GET | `/ambiance/:location/history?last=3h` | non | — | évolution par tranches de 15 min |
 | GET | `/ambiance/:location/quiet-hours` | non | — | créneaux typiquement calmes |
+| GET | `/ambiance/:location/best-study-time` | non | — | prochain créneau calme (Phase 3) |
 | GET | `/ambiance/:location/loudest-moment?last=24h` | non | — | pic de bruit sur la période |
 
 Toutes les réponses suivent l'enveloppe `{ "data": ... }` en cas de succès, `{ "error": { "code", "message" } }` en cas d'erreur.
@@ -131,4 +132,56 @@ Tout le serveur (`src/`) a été porté en TypeScript : modèles Mongoose typés
 ### Temps réel (Server-Sent Events)
 
 `GET /locations/stream` ouvre un flux SSE : dès qu'une mesure (`POST /measurements`) ou une observation (`POST /observations`) est reçue pour un lieu, sa classification mise à jour est poussée immédiatement à tous les clients connectés à ce flux, sans qu'ils aient à re-interroger l'API par sondage périodique. Le client React s'y abonne dès le chargement de la carte (`src/api/locations.js` → `subscribeToLocationUpdates`) et met à jour l'affichage en direct.
+
+---
+
+## Phase 3 — robustesse, tests, cache et déploiement
+
+### Fonctionnalité additionnelle : meilleur moment pour étudier
+
+`GET /ambiance/:location/best-study-time` suggère le prochain créneau typiquement calme d'un lieu ("c'est calme maintenant, pour ~2h" / "prochain créneau calme dans 3h"), à partir de l'historique déjà utilisé par `/quiet-hours`. Affiché sur la page d'un lieu (`StudyTimeSuggestion.jsx`). Limite assumée : raisonne en heures cycliques, sans distinguer semaine/weekend (piste d'amélioration une fois plus de données collectées).
+
+### Maintenabilité : couche `services/`
+
+Toute la logique métier auparavant mêlée aux routes (bucketing d'historique, calcul de créneaux calmes, portrait d'ambiance, moment le plus bruyant) a été extraite en fonctions **pures** dans `src/services/` — aucune ne touche MongoDB. Les routes ne font plus que : récupérer les données, appeler le service, répondre. C'est ce qui rend les services testables sans serveur ni base de données (voir Tests ci-dessous).
+
+### Tests unitaires
+
+```bash
+npm test
+```
+
+7 fichiers de tests, 42 cas, couvrant `aggregation`, `duration`, `history`, `quietHours`, `loudestMoment`, `portrait`, `studySuggestion` et le cache (`TTLCache`) — au moins 3 cas (nominal + limites) par service.
+
+### Stratégie de cache
+
+**Backend** (`src/utils/cache.ts`, `src/middlewares/cache.ts`) : cache TTL en mémoire, clé = route + paramètres, appliqué aux routes `GET` de lecture d'ambiance (`/ambiance/:location*`, TTL 15 s à 5 min selon la volatilité de la donnée) et à `GET /locations` (TTL 20 s, la plus coûteuse à calculer). Invalidation ciblée dès qu'une mesure/observation arrive, via le même bus d'événements que le SSE (`src/utils/cacheInvalidation.ts`).
+
+**Frontend** (`client/src/api/client.js`) : même principe, TTL alignés sur le backend, invalidés après soumission d'une observation.
+
+**Jamais mis en cache** : toute écriture (POST/DELETE), `/locations/stream` (SSE), et surtout `/users/me*` (données propres à l'usager — cachées par URL, elles fuiteraient entre usagers).
+
+### Déploiement (Render)
+
+Le dépôt inclut un blueprint [`render.yaml`](./render.yaml) décrivant les deux services :
+
+- **`ambiance-api`** — Web Service Node, `npm install && npm run build` puis `npm start`.
+- **`ambiance-client`** — Static Site, build dans `client/`, publié sur `client/dist`.
+
+**Adresses en production :**
+
+- Backend : `<À COMPLÉTER après déploiement>`
+- Frontend : `<À COMPLÉTER après déploiement>`
+
+**Étapes pour déployer (à faire une fois, depuis le tableau de bord Render) :**
+
+1. Sur [dashboard.render.com](https://dashboard.render.com), **New → Blueprint**, connecter ce dépôt GitHub. Render détecte `render.yaml` et propose de créer les deux services.
+2. Sur `ambiance-api`, dans l'onglet *Environment*, définir les variables marquées `sync: false` dans `render.yaml` : `MONGODB_URI` (chaîne de connexion Atlas), `JWT_SECRET` (chaîne aléatoire longue). Laisser `CORS_ORIGIN` vide pour l'instant.
+3. Déployer `ambiance-api`, noter son URL (ex: `https://ambiance-api.onrender.com`).
+4. Sur `ambiance-client`, définir `VITE_API_URL` avec cette URL, puis déployer. Noter son URL (ex: `https://ambiance-client.onrender.com`).
+5. Revenir sur `ambiance-api`, définir `CORS_ORIGIN` avec l'URL du frontend obtenue à l'étape 4, puis redéployer (pour que le CORS n'accepte que ce domaine).
+6. Mettre à jour ce README avec les deux adresses définitives.
+
+Les deux services sont automatiquement servis en HTTPS par Render (aucune configuration additionnelle requise).
+
 

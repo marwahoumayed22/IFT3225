@@ -1,0 +1,39 @@
+services:
+  # --- Backend : API Express/TypeScript + MongoDB ---
+  - type: web
+    name: ambiance-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      # Secrets à définir manuellement dans le tableau de bord Render (jamais dans ce fichier) :
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # URL du frontend déployé, une fois connue (voir README) — restreint le CORS.
+      - key: CORS_ORIGIN
+        sync: false
+
+  # --- Frontend : client React (Vite), servi comme site statique ---
+  - type: web
+    name: ambiance-client
+    runtime: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # URL du backend déployé ci-dessus (ex: https://ambiance-api.onrender.com).
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      # Toutes les routes React Router doivent retomber sur index.html (SPA).
+      - type: rewrite
+        source: /*
+        destination: /index.html
