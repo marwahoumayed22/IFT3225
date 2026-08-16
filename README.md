@@ -190,8 +190,8 @@ Le dépôt inclut un blueprint [`render.yaml`](./render.yaml) décrivant les deu
 
 **Adresses en production :**
 
-- Backend : `<À COMPLÉTER après déploiement>`
-- Frontend : `<À COMPLÉTER après déploiement>`
+Backend : https://ambiance-api-production.up.railway.app
+Frontend : https://ambiance-client-production.up.railway.app
 
 **Étapes pour déployer (à faire une fois, depuis le tableau de bord Render) :**
 
