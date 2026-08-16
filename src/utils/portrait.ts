@@ -1,23 +1,12 @@
 import Measurement from '../models/Measurement';
 import Observation from '../models/Observation';
-import { classifyAudioLevel, average, QUIET_THRESHOLD, LOUD_THRESHOLD, Classification } from './aggregation';
+import { buildPortrait, Portrait } from '../services/portrait.service';
 
-export interface Portrait {
-  location: string;
-  hasData: boolean;
-  windowMinutes: number;
-  sampleCount: number;
-  audio: {
-    average: number | null;
-    classification: Classification | null;
-    scale: { unit: string; quietBelow: number; loudAbove: number };
-  };
-  lastObservation: { proximity: number; vibe: string; timestamp: Date } | null;
-  lastMeasurementAt: Date | null;
-  generatedAt: Date;
-}
+export { Portrait };
 
-// Portrait d'ambiance courant d'un lieu (fenêtre glissante de 15 minutes).
+// Accès aux données pour le portrait d'ambiance courant d'un lieu (fenêtre glissante
+// de 15 minutes). Le calcul lui-même (moyenne, classification) vit dans
+// services/portrait.service.ts, sous forme de fonction pure testable sans DB.
 // Centralisé ici pour être réutilisé par GET /ambiance/:location (portrait détaillé)
 // et par GET /locations (classification affichée sur chaque marqueur de la carte).
 export async function computePortrait(location: string): Promise<Portrait> {
@@ -28,23 +17,13 @@ export async function computePortrait(location: string): Promise<Portrait> {
   const lastMeasurement = await Measurement.findOne({ location }).sort({ timestamp: -1 });
   const lastObservation = await Observation.findOne({ location }).sort({ timestamp: -1 });
 
-  const avg = average(measurements.map((m) => m.value));
-  const hasAnyData = Boolean(lastMeasurement || lastObservation);
-
-  return {
+  return buildPortrait({
     location,
-    hasData: hasAnyData,
     windowMinutes,
-    sampleCount: measurements.length,
-    audio: {
-      average: avg,
-      classification: hasAnyData ? classifyAudioLevel(avg) : null,
-      scale: { unit: 'amplitude_phyphox', quietBelow: QUIET_THRESHOLD, loudAbove: LOUD_THRESHOLD },
-    },
+    windowMeasurementValues: measurements.map((m) => m.value),
+    lastMeasurementAt: lastMeasurement ? lastMeasurement.timestamp : null,
     lastObservation: lastObservation
       ? { proximity: lastObservation.proximity, vibe: lastObservation.vibe, timestamp: lastObservation.timestamp }
       : null,
-    lastMeasurementAt: lastMeasurement ? lastMeasurement.timestamp : null,
-    generatedAt: new Date(),
-  };
+  });
 }
