@@ -161,6 +161,26 @@ npm test
 
 **Jamais mis en cache** : toute écriture (POST/DELETE), `/locations/stream` (SSE), et surtout `/users/me*` (données propres à l'usager — cachées par URL, elles fuiteraient entre usagers).
 
+### Optimisations et faiblesse
+
+**Cache** : les routes de lecture d'ambiance (`/ambiance/:location*`) et `/locations` passent
+par un cache TTL en mémoire, servi via l'en-tête `X-Cache: HIT`/`MISS`. Ça évite de recalculer
+le portrait/l'historique à chaque requête tant que la donnée n'a pas changé, avec invalidation
+ciblée dès qu'une mesure/observation arrive — pas de données périmées servies.
+
+**Extraction en services purs** : la logique métier a été sortie des routes vers
+`src/services/`, sous forme de fonctions pures sans accès direct à MongoDB, ce qui les rend
+testables isolément (42 cas de tests, 7 fichiers) sans serveur ni base de données.
+
+**Faiblesses assumées** : le `TTLCache` vit en mémoire dans le process Node, donc adapté à une
+seule instance (plan Render gratuit) mais deviendrait incohérent si l'app scalait à plusieurs
+instances (piste : cache partagé type Redis). `best-study-time` raisonne en heures cycliques
+sans distinguer semaine/weekend (piste : bucketiser une fois plus de données collectées). Les
+tests couvrent la couche service mais pas les routes HTTP elles-mêmes (piste : tests
+d'intégration sur `/auth` et `/observations`). Le frontend reste sur des hooks/`Context` sans
+state manager centralisé (Zustand/Redux), suffisant à cette échelle mais limitant si l'état
+partagé se complexifie.
+
 ### Déploiement (Render)
 
 Le dépôt inclut un blueprint [`render.yaml`](./render.yaml) décrivant les deux services :
