@@ -161,7 +161,7 @@ npm test
 
 **Jamais mis en cache** : toute écriture (POST/DELETE), `/locations/stream` (SSE), et surtout `/users/me*` (données propres à l'usager — cachées par URL, elles fuiteraient entre usagers).
 
-### Optimisations et faiblesse
+### Optimisations et faiblesses
 
 **Cache** : les routes de lecture d'ambiance (`/ambiance/:location*`) et `/locations` passent
 par un cache TTL en mémoire, servi via l'en-tête `X-Cache: HIT`/`MISS`. Ça évite de recalculer
